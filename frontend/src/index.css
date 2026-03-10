@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50;
+}
+
+.bg-grid {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.glass {
+  @apply bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 shadow-glass backdrop-blur-glass;
+}
+
+.neo {
+  @apply bg-white/80 dark:bg-zinc-900/30 border border-black/5 dark:border-white/10;
+  box-shadow:
+    10px 10px 22px rgba(0, 0, 0, 0.08),
+    -10px -10px 22px rgba(255, 255, 255, 0.65);
+}
+
+.dark .neo {
+  box-shadow:
+    14px 14px 34px rgba(0, 0, 0, 0.42),
+    -10px -10px 28px rgba(255, 255, 255, 0.04);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition will-change-transform active:translate-y-[1px];
+}
+
+.btn-primary {
+  @apply btn bg-brand-600 hover:bg-brand-500 text-white shadow-soft;
+}
+
+.btn-ghost {
+  @apply btn bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/10 dark:border-white/10;
+}
+
+.input {
+  @apply w-full rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500/60;
+}
+
+/* Fix native <select> dropdown readability (options list). */
+select.input {
+  @apply text-zinc-950 dark:text-zinc-50;
+}
+
+select.input option {
+  background: rgb(250 250 250);
+  color: rgb(9 9 11);
+}
+
+.dark select.input option {
+  background: rgb(9 9 11);
+  color: rgb(250 250 250);
+}
