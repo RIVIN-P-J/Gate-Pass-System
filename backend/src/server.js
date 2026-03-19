@@ -10,7 +10,11 @@ const authRoutes = require('./routes/auth')
 const gatepassRoutes = require('./routes/gatepasses')
 const adminRoutes = require('./routes/admin')
 const securityRoutes = require('./routes/security')
+const notificationRoutes = require('./routes/notifications')
+const studentStatusRoutes = require('./routes/studentStatus')
+const qrCodeRoutes = require('./routes/qrCodes')
 const { requireAuth, requireRole } = require('./middleware/auth')
+const { checkOverdueStudents } = require('./routes/studentStatus')
 
 const app = express()
 
@@ -26,6 +30,9 @@ app.use('/api/auth', authRoutes)
 app.use('/api/gatepasses', gatepassRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/security', securityRoutes)
+app.use('/api/notifications', notificationRoutes)
+app.use('/api/student-status', studentStatusRoutes)
+app.use('/api/qr-codes', qrCodeRoutes)
 
 const server = http.createServer(app)
 const io = new Server(server, {
@@ -53,8 +60,16 @@ io.on('connection', (socket) => {
   socket.join(`user:${socket.user.id}`)
 })
 
+// Check for overdue students every 5 minutes
+setInterval(async () => {
+  try {
+    await checkOverdueStudents()
+  } catch (error) {
+    console.error('Error checking overdue students:', error)
+  }
+}, 5 * 60 * 1000) // 5 minutes
+
 server.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`API listening on http://localhost:${PORT}`)
 })
-

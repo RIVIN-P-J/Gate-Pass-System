@@ -4,6 +4,7 @@ const QRCode = require('qrcode')
 const jwt = require('jsonwebtoken')
 const { query } = require('../db/pool')
 const { requireAuth, requireRole } = require('../middleware/auth')
+const { checkMonthlyLimit } = require('./notifications')
 
 const router = express.Router()
 
@@ -25,10 +26,52 @@ router.post('/', requireAuth, requireRole('student'), async (req, res) => {
   if (!studentId) return res.status(400).json({ message: 'Student profile missing' })
 
   const { reason, out_time, in_time } = body.data
+  
+  // Parse dates
+  const outDateTime = new Date(out_time)
+  const inDateTime = new Date(in_time)
+  const now = new Date()
+  
+  // Validation Logic
+  const errors = []
+  
+  // 1. OUT time cannot be in the past
+  if (outDateTime < now) {
+    errors.push('OUT time cannot be in the past')
+  }
+  
+  // 2. IN time must be greater than OUT time
+  if (inDateTime <= outDateTime) {
+    errors.push('IN time must be later than OUT time')
+  }
+  
+  // 3. Both times should be reasonable (not too far in future)
+  const maxFutureDays = 30 // Maximum 30 days in future
+  const maxFutureDate = new Date()
+  maxFutureDate.setDate(maxFutureDate.getDate() + maxFutureDays)
+  
+  if (outDateTime > maxFutureDate) {
+    errors.push(`OUT time cannot be more than ${maxFutureDays} days in the future`)
+  }
+  
+  // Return validation errors if any
+  if (errors.length > 0) {
+    return res.status(400).json({ 
+      message: 'Validation failed', 
+      errors 
+    })
+  }
+
   const result = await query(
     'INSERT INTO GatepassRequests (student_id, reason, out_time, in_time, status) VALUES (?, ?, ?, ?, ?)',
     [studentId, reason, new Date(out_time), new Date(in_time), 'pending'],
   )
+  
+  // Check monthly limit (async, don't wait for response)
+  checkMonthlyLimit(studentId, result.insertId).catch(err => 
+    console.error('Error checking monthly limit:', err)
+  )
+  
   return res.json({ id: result.insertId })
 })
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../store/auth.jsx'
 import { useTheme } from '../store/theme.jsx'
 import { cn } from '../lib/cn'
+import GradientBackground from '../components/GradientBackground'
 
 const NavItem = ({ to, label, icon, collapsed }) => (
   <NavLink
@@ -11,15 +12,15 @@ const NavItem = ({ to, label, icon, collapsed }) => (
     className={({ isActive }) =>
       cn(
         'group flex items-center gap-3 rounded-2xl px-3 py-2 transition will-change-transform',
-        isActive ? 'bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5 border border-transparent',
+        isActive ? 'bg-white/10 border border-white/10' : 'hover:bg-white/5 border border-transparent',
       )
     }
   >
-    <div className="grid size-9 place-items-center rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 group-hover:bg-black/10 dark:group-hover:bg-white/10">
-      <span className="text-zinc-800 dark:text-zinc-200">{icon}</span>
+    <div className="grid size-9 place-items-center rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10">
+      <span className="text-zinc-200">{icon}</span>
     </div>
     <motion.div
-      className="text-zinc-900 dark:text-zinc-200 font-medium whitespace-nowrap"
+      className="text-zinc-200 font-medium whitespace-nowrap"
       animate={{ opacity: collapsed ? 0 : 1, width: collapsed ? 0 : 'auto' }}
       transition={{ duration: 0.2 }}
     >
@@ -54,6 +55,7 @@ export default function AppLayout() {
       items.push(
         { to: '/app/admin/requests', label: 'Requests', icon: '▦' },
         { to: '/app/admin/analytics', label: 'Analytics', icon: '◷' },
+        { to: '/app/admin/notifications', label: 'Notifications', icon: '⚠' },
       )
     }
     if (user?.role === 'security') {
@@ -66,8 +68,8 @@ export default function AppLayout() {
   }, [roleHome, user?.role])
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
-      <div className="absolute inset-0 bg-grid opacity-70 dark:opacity-50" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-brand-900 via-slate-950 to-black text-zinc-50">
+      <GradientBackground />
       <div className="relative mx-auto max-w-[1400px] px-4 py-5">
         <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
           <motion.aside

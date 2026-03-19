@@ -14,6 +14,7 @@ import History from './pages/student/History'
 import AdminHome from './pages/admin/AdminHome'
 import Requests from './pages/admin/Requests'
 import Analytics from './pages/admin/Analytics'
+import Notifications from './pages/admin/Notifications'
 import SecurityHome from './pages/security/SecurityHome'
 import Verify from './pages/security/Verify'
 import Logs from './pages/security/Logs'
@@ -99,6 +100,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute allowRoles={['admin']}>
                 <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/notifications"
+            element={
+              <ProtectedRoute allowRoles={['admin']}>
+                <Notifications />
               </ProtectedRoute>
             }
           />

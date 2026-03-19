@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   async function hydrate() {
-    const token = localStorage.getItem('gp_token')
+    const token = localStorage.getItem('token')
     if (!token) {
       setUser(null)
       setLoading(false)
@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
       const { data } = await api.get('/auth/me')
       setUser(data.user)
     } catch {
-      localStorage.removeItem('gp_token')
+      localStorage.removeItem('token')
       setUser(null)
     } finally {
       setLoading(false)
@@ -32,12 +32,12 @@ export function AuthProvider({ children }) {
 
   async function login({ email, password }) {
     const { data } = await api.post('/auth/login', { email, password })
-    localStorage.setItem('gp_token', data.token)
+    localStorage.setItem('token', data.token)
     setUser(data.user)
   }
 
   function logout() {
-    localStorage.removeItem('gp_token')
+    localStorage.removeItem('token')
     setUser(null)
   }
 

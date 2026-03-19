@@ -93,5 +93,76 @@ router.get('/analytics', requireAuth, requireRole('admin'), async (req, res) => 
   return res.json({ totals, daily })
 })
 
+// Get admin settings
+router.get('/settings', requireAuth, requireRole('admin'), async (req, res) => {
+  const settings = await query('SELECT setting_key, setting_value FROM AdminSettings')
+  return res.json(settings)
+})
+
+// Update admin settings
+router.post('/settings', requireAuth, requireRole('admin'), async (req, res) => {
+  const { setting_key, setting_value } = req.body
+  
+  await query(
+    'INSERT INTO AdminSettings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+    [setting_key, setting_value, setting_value]
+  )
+  
+  return res.json({ success: true })
+})
+
+// Get dashboard statistics
+router.get('/stats', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    // Get pending requests count
+    const pendingResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests WHERE status = ?',
+      ['pending']
+    )
+    const pending = pendingResult[0].count
+
+    // Get approved today count
+    const approvedTodayResult = await query(
+      `SELECT COUNT(*) as count FROM GatepassRequests 
+       WHERE status = ? AND DATE(updated_at) = CURDATE()`,
+      ['approved']
+    )
+    const approvedToday = approvedTodayResult[0].count
+
+    // Get total requests count
+    const totalResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests'
+    )
+    const total = totalResult[0].count
+
+    // Get additional stats for future use
+    const rejectedResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests WHERE status = ?',
+      ['rejected']
+    )
+    const rejected = rejectedResult[0].count
+
+    const completedResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests WHERE status = ?',
+      ['approved']
+    )
+    const completed = completedResult[0].count
+
+    return res.json({
+      pending,
+      approvedToday,
+      total,
+      rejected,
+      completed,
+      // Additional useful stats
+      todayTotal: pending + approvedToday,
+      approvalRate: total > 0 ? Math.round((completed / total) * 100) : 0
+    })
+  } catch (error) {
+    console.error('Error fetching admin stats:', error)
+    return res.status(500).json({ message: 'Failed to fetch statistics' })
+  }
+})
+
 module.exports = router
 

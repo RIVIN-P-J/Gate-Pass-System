@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../../lib/api'
+import { eventEmitter } from '../../lib/events'
 
 const StatusPill = ({ status }) => {
   const cls =
@@ -81,6 +82,9 @@ export default function Requests() {
       toast.success(nextStatus === 'approved' ? 'Approved' : 'Rejected')
       setSelected(null)
       await load()
+      
+      // Emit event to refresh admin dashboard stats
+      eventEmitter.emit('requestUpdated', { action: nextStatus, id })
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Action failed')
     } finally {
