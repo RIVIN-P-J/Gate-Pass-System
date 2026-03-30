@@ -6,7 +6,7 @@ import { api } from '../../lib/api'
 function TooltipCard({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-2xl bg-zinc-950 border border-white/10 px-4 py-3 shadow-soft">
+    <div className="rounded-2xl glass px-4 py-3 shadow-soft">
       <div className="text-xs text-zinc-400">{label}</div>
       <div className="mt-1 text-sm text-zinc-200">
         Total: <span className="font-semibold">{payload[0].value}</span>

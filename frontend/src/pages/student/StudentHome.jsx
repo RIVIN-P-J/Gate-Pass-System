@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Home, LogOut, LogIn, AlertTriangle, Clock } from 'lucide-react'
+import { formatDateTime } from '../../lib/date'
 import StudentQRCode from '../../components/StudentQRCode'
 
 const Card = ({ title, desc, to }) => (
@@ -39,7 +40,7 @@ const StatusCard = ({ status, currentGatepass }) => {
           color: 'text-rose-400',
           bgColor: 'bg-rose-500/15 border-rose-500/25',
           label: 'Overdue',
-          description: currentGatepass ? `Expected back at: ${new Date(currentGatepass.in_time).toLocaleString()}` : 'You are overdue to return'
+          description: currentGatepass ? `Expected back at: ${formatDateTime(currentGatepass.in_time)}` : 'You are overdue to return'
         }
       default:
         return {
@@ -71,9 +72,9 @@ const StatusCard = ({ status, currentGatepass }) => {
           {currentGatepass && (
             <div className="flex items-center gap-2 mt-2 text-xs text-zinc-400">
               <Clock className="h-3 w-3" />
-              <span>Out: {new Date(currentGatepass.out_time).toLocaleString()}</span>
+              <span>Out: {formatDateTime(currentGatepass.out_time)}</span>
               {currentGatepass.in_time && (
-                <span>• In: {new Date(currentGatepass.in_time).toLocaleString()}</span>
+                <span>• In: {formatDateTime(currentGatepass.in_time)}</span>
               )}
             </div>
           )}

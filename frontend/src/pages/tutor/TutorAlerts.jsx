@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
+import { formatDateTime } from '../../lib/date'
 
 export default function TutorAlerts() {
   const [alerts, setAlerts] = useState([])
@@ -125,7 +126,7 @@ export default function TutorAlerts() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
             >
-              <div className="rounded-[1.35rem] bg-zinc-950/95 px-5 py-4 flex flex-wrap items-start justify-between gap-4">
+              <div className="rounded-[1.35rem] bg-black/40 backdrop-blur-md px-5 py-4 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-zinc-400">Student</div>
                   <div className="mt-1 text-lg font-semibold text-zinc-50">
@@ -136,7 +137,7 @@ export default function TutorAlerts() {
                   </div>
                   <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-300 max-w-xl">{a.reason}</div>
                   <div className="mt-2 text-xs text-zinc-500">
-                    Out: {new Date(a.out_time).toLocaleString()} • Expected in: {new Date(a.in_time).toLocaleString()}
+                    Out: {formatDateTime(a.out_time)} • Expected in: {formatDateTime(a.in_time)}
                   </div>
                 </div>
 
@@ -181,7 +182,7 @@ export default function TutorAlerts() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <div className="rounded-[1.35rem] bg-zinc-950/95 px-5 py-4 flex flex-wrap items-start justify-between gap-4">
+                <div className="rounded-[1.35rem] bg-black/40 backdrop-blur-md px-5 py-4 flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="text-xs uppercase tracking-widest text-zinc-400">Student</div>
                     <div className="mt-1 text-lg font-semibold text-zinc-50">

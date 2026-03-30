@@ -16,12 +16,30 @@ router.post('/signup', async (req, res) => {
     register_number: z.string().optional(),
     department: z.string().optional(),
     year: z.coerce.number().int().min(1).max(5).optional(),
+    parent_name: z.string().min(2).optional(),
+    parent_relationship: z.string().min(2).optional(),
+    parent_phone: z.string().optional(),
+    parent_email: z.string().email().optional(),
+    parent_preferred_method: z.enum(['sms', 'email', 'both']).optional(),
   })
 
   const body = schema.safeParse(req.body)
   if (!body.success) return res.status(400).json({ message: 'Invalid payload', errors: body.error.flatten() })
 
-  const { name, email, password, role, register_number, department, year } = body.data
+  const {
+    name,
+    email,
+    password,
+    role,
+    register_number,
+    department,
+    year,
+    parent_name,
+    parent_relationship,
+    parent_phone,
+    parent_email,
+    parent_preferred_method = 'sms',
+  } = body.data
 
   const existing = await query('SELECT id FROM Users WHERE email = ?', [email])
   if (existing.length) return res.status(409).json({ message: 'Email already registered' })
@@ -34,6 +52,15 @@ router.post('/signup', async (req, res) => {
     if (!register_number || !department || !year) {
       return res.status(400).json({ message: 'Student profile fields required' })
     }
+
+    if (!parent_phone && !parent_email) {
+      return res.status(400).json({ message: 'At least one parent contact (phone or email) is required' })
+    }
+
+    if (!parent_name || !parent_relationship) {
+      return res.status(400).json({ message: 'Parent name and relationship are required' })
+    }
+
     try {
       await query(
         'INSERT INTO Students (user_id, register_number, department, year) VALUES (?, ?, ?, ?)',
@@ -41,6 +68,32 @@ router.post('/signup', async (req, res) => {
       )
     } catch (e) {
       return res.status(400).json({ message: 'Failed to create student profile (maybe duplicate register number)' })
+    }
+
+    const studentRows = await query('SELECT id FROM Students WHERE user_id = ?', [userId])
+    const studentId = studentRows[0]?.id
+
+    if (studentId) {
+      const preferredMethod = parent_preferred_method || 'sms'
+      if (parent_phone) {
+        const smsPreferred = preferredMethod === 'sms' ? 'sms' : 'both'
+        await query(
+          `INSERT INTO ParentContacts
+           (student_id, contact_type, contact_value, contact_name, relationship, preferred_method)
+           VALUES (?, 'sms', ?, ?, ?, ?)`,
+          [studentId, parent_phone, parent_name, parent_relationship, smsPreferred]
+        )
+      }
+
+      if (parent_email) {
+        const emailPreferred = preferredMethod === 'email' ? 'email' : 'both'
+        await query(
+          `INSERT INTO ParentContacts
+           (student_id, contact_type, contact_value, contact_name, relationship, preferred_method)
+           VALUES (?, 'email', ?, ?, ?, ?)`,
+          [studentId, parent_email, parent_name, parent_relationship, emailPreferred]
+        )
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
+import { formatDateTime } from '../../lib/date'
 import QRScanner from '../../components/QRScanner'
 import { Keyboard, Camera, QrCode } from 'lucide-react'
 
@@ -10,23 +11,13 @@ export default function Verify() {
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const [inputMode, setInputMode] = useState('scanner') // 'scanner' or 'manual'
-  const [scanType, setScanType] = useState('gatepass') // 'gatepass' or 'entry'
 
-  async function verify(qrPayload = payload, type = scanType) {
+  async function verify(qrPayload = payload) {
     setBusy(true)
     try {
-      let endpoint
-      if (type === 'entry') {
-        // Verify entry QR code
-        const { data } = await api.post('/qr-codes/verify-entry', { qrToken: qrPayload })
-        setResult(data)
-        toast.success('Entry QR code verified - Ready to mark entry')
-      } else {
-        // Verify regular gatepass QR code
-        const { data } = await api.post('/security/verify', { payload: qrPayload })
-        setResult(data)
-        toast.success('Valid gatepass')
-      }
+      const { data } = await api.post('/security/verify', { payload: qrPayload })
+      setResult(data)
+      toast.success(`Valid gatepass - ${data.action === 'exit' ? 'Exit' : 'Entry'} recorded`)
       if (inputMode === 'scanner') {
         setPayload(qrPayload) // Update payload display when using scanner
       }
@@ -47,70 +38,12 @@ export default function Verify() {
     console.error('QR Scan Error:', error)
   }
 
-  async function mark(action) {
-    try {
-      const { data } = await api.post(`/security/gatepasses/${result.gatepass.id}/${action}`)
-      setResult({ ...result, gatepass: data.gatepass })
-      toast.success(action === 'exit' ? 'Exit recorded successfully' : 'Entry recorded successfully')
-    } catch (err) {
-      const errorData = err?.response?.data
-      let errorMessage = errorData?.message || 'Failed to update log'
-      
-      // Handle specific error codes with better user messages
-      if (errorData?.code === 'ALREADY_EXITED') {
-        errorMessage = 'This QR code has already been used for exit. Each gatepass allows only one exit.'
-      } else if (errorData?.code === 'CYCLE_COMPLETED') {
-        errorMessage = 'This gatepass cycle is already completed. Student has both exited and entered.'
-      } else if (errorData?.code === 'ALREADY_ENTERED') {
-        errorMessage = 'This QR code has already been used for entry. Each gatepass allows only one entry.'
-      } else if (errorData?.code === 'NO_EXIT_RECORD') {
-        errorMessage = 'Student must exit before entering. No exit record found.'
-      } else if (errorData?.code === 'NO_EXIT_TIME') {
-        errorMessage = 'Student has not exited yet. Cannot mark entry without exit.'
-      }
-      
-      toast.error(errorMessage)
-    }
-  }
 
   return (
     <div>
       <div className="text-2xl font-semibold">Verify QR Code</div>
       <div className="mt-2 text-zinc-300">Scan QR codes using camera or upload images for verification.</div>
 
-      {/* Scan Type Selection */}
-      <div className="mt-6 flex gap-3">
-        <button
-          onClick={() => {
-            setScanType('gatepass')
-            setResult(null)
-            setPayload('')
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-            scanType === 'gatepass'
-              ? 'bg-brand-500 text-white'
-              : 'bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/7'
-          }`}
-        >
-          <QrCode className="h-4 w-4" />
-          Gatepass QR
-        </button>
-        <button
-          onClick={() => {
-            setScanType('entry')
-            setResult(null)
-            setPayload('')
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-            scanType === 'entry'
-              ? 'bg-brand-500 text-white'
-              : 'bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/7'
-          }`}
-        >
-          <QrCode className="h-4 w-4" />
-          Entry QR
-        </button>
-      </div>
 
       {/* Mode Selection */}
       <div className="mt-6 flex gap-3">
@@ -160,14 +93,12 @@ export default function Verify() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div>
-            <label className="block text-sm text-zinc-300 mb-2">
-              {scanType === 'entry' ? 'Entry QR Token' : 'QR Payload'}
-            </label>
+            <label className="block text-sm text-zinc-300 mb-2">QR Payload</label>
             <textarea 
               className="input min-h-[120px]" 
               value={payload} 
               onChange={(e) => setPayload(e.target.value)} 
-              placeholder={scanType === 'entry' ? 'Paste entry QR token here…' : 'Paste QR payload here…'}
+              placeholder="Paste QR payload here…"
             />
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
@@ -188,7 +119,7 @@ export default function Verify() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="text-xs text-zinc-400 mb-1">Current {scanType === 'entry' ? 'QR Token' : 'Payload'}:</div>
+          <div className="text-xs text-zinc-400 mb-1">Current Payload:</div>
           <div className="text-sm text-zinc-300 font-mono break-all">{payload}</div>
         </motion.div>
       )}
@@ -205,11 +136,11 @@ export default function Verify() {
               <div className="text-lg font-semibold">Gatepass #{result.gatepass.id}</div>
               <div className="mt-1 text-zinc-300">{result.student?.register_number}</div>
               <div className="mt-2 text-xs text-zinc-400">
-                Out: {new Date(result.gatepass.out_time).toLocaleString()} • In: {new Date(result.gatepass.in_time).toLocaleString()}
+                Out: {formatDateTime(result.gatepass.out_time)} • In: {formatDateTime(result.gatepass.in_time)}
               </div>
-              {scanType === 'entry' && result.exit_time && (
+              {result.exit_time && (
                 <div className="mt-1 text-xs text-amber-400">
-                  Exited: {new Date(result.exit_time).toLocaleString()}
+                  Exited: {formatDateTime(result.exit_time)}
                 </div>
               )}
             </div>
@@ -218,22 +149,16 @@ export default function Verify() {
 
           <div className="mt-4 text-zinc-200">{result.gatepass.reason}</div>
 
-          <div className="mt-5 flex flex-wrap gap-2 justify-end">
-            {scanType === 'entry' ? (
-              // Entry QR mode - only show entry button
-              <button className="btn-primary" onClick={() => mark('entry')} disabled={result.gatepass.exit_time === null}>
-                Mark Entry
-              </button>
+          <div className="mt-5 rounded-3xl bg-zinc-900/40 p-4 text-sm text-zinc-300">
+            {result.action ? (
+              <div>
+                <div className="font-semibold text-zinc-100">Action recorded:</div>
+                <div className="mt-2">
+                  {result.action === 'exit' ? 'Exit' : 'Entry'} at {formatDateTime(result.action_time)}
+                </div>
+              </div>
             ) : (
-              // Regular gatepass mode - show both buttons
-              <>
-                <button className="btn-ghost" onClick={() => mark('exit')}>
-                  Mark Exit
-                </button>
-                <button className="btn-primary" onClick={() => mark('entry')}>
-                  Mark Entry
-                </button>
-              </>
+              <div>No security action was recorded.</div>
             )}
           </div>
         </motion.div>

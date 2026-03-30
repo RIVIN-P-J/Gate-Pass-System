@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
+import { formatDateTime } from '../../lib/date'
 
 export default function Logs() {
   const [items, setItems] = useState([])
@@ -58,8 +59,8 @@ export default function Logs() {
                   <div className="mt-1 text-xs text-zinc-400">{x.student_department} • Year {x.student_year}</div>
                 </div>
                 <div className="text-xs text-zinc-400">
-                  Exit: {x.exit_time ? new Date(x.exit_time).toLocaleString() : '—'} • Entry:{' '}
-                  {x.entry_time ? new Date(x.entry_time).toLocaleString() : '—'}
+                  Exit: {x.exit_time ? formatDateTime(x.exit_time) : '—'} • Entry:{' '}
+                  {x.entry_time ? formatDateTime(x.entry_time) : '—'}
                 </div>
               </div>
             </motion.div>

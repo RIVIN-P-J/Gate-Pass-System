@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { formatDateTime } from '../../lib/date'
 import { Bell, BellRing, CheckCircle, AlertTriangle, Clock, Users, Settings } from 'lucide-react'
 
 const StatusPill = ({ type }) => {
@@ -37,7 +38,7 @@ const NotificationCard = ({ notification, onMarkAsRead }) => {
   }
 
   const formatDateTime = (dateTime) => {
-    return new Date(dateTime).toLocaleString()
+    return formatDateTime(dateTime)
   }
 
   return (

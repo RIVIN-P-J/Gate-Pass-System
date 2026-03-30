@@ -28,6 +28,8 @@ export default function AdminHome() {
     total: 0,
     rejected: 0,
     completed: 0,
+    emergencyPending: 0,
+    emergencyApproved: 0,
     todayTotal: 0,
     approvalRate: 0
   })
@@ -124,6 +126,16 @@ export default function AdminHome() {
         <Stat label="Completed" value={stats.completed} loading={loading} />
         <Stat label="Today's total" value={stats.todayTotal} loading={loading} />
         <Stat label="Approval rate" value={`${stats.approvalRate}%`} loading={loading} />
+      </motion.div>
+
+      <motion.div
+        className="mt-4 grid gap-4 md:grid-cols-2"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.15 }}
+      >
+        <Stat label="Emergency pending" value={stats.emergencyPending} loading={loading} />
+        <Stat label="Emergency approved" value={stats.emergencyApproved} loading={loading} />
       </motion.div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">

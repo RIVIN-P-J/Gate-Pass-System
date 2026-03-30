@@ -5,6 +5,7 @@ const cors = require('cors')
 const { Server } = require('socket.io')
 const { attachIO } = require('./realtime/hub')
 const { verifyToken } = require('./auth/jwt')
+const { ensureEmergencySchema } = require('./db/pool')
 
 const authRoutes = require('./routes/auth')
 const gatepassRoutes = require('./routes/gatepasses')
@@ -13,6 +14,7 @@ const securityRoutes = require('./routes/security')
 const notificationRoutes = require('./routes/notifications')
 const studentStatusRoutes = require('./routes/studentStatus')
 const qrCodeRoutes = require('./routes/qrCodes')
+const parentContactsRoutes = require('./routes/parentContacts')
 const { requireAuth, requireRole } = require('./middleware/auth')
 const { checkOverdueStudents } = require('./routes/studentStatus')
 
@@ -33,6 +35,7 @@ app.use('/api/security', securityRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/student-status', studentStatusRoutes)
 app.use('/api/qr-codes', qrCodeRoutes)
+app.use('/api/parent-contacts', parentContactsRoutes)
 
 const server = http.createServer(app)
 const io = new Server(server, {
@@ -69,7 +72,17 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000) // 5 minutes
 
-server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${PORT}`)
-})
+async function startServer() {
+  try {
+    await ensureEmergencySchema()
+  } catch (error) {
+    console.error('Error ensuring emergency schema:', error)
+  }
+
+  server.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`API listening on http://localhost:${PORT}`)
+  })
+}
+
+startServer()

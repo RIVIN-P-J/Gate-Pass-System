@@ -114,12 +114,6 @@ const validateForm = () => {
 
   // Additional validations if both times are set
   if (outDateTime && inDateTime) {
-    // Duration check (max 24 hours)
-    const durationHours = (inDateTime - outDateTime) / (1000 * 60 * 60)
-    if (durationHours > 24) {
-      newErrors.in_time = 'Gate pass duration cannot exceed 24 hours'
-    }
-
     // Future date check (max 30 days)
     const maxFutureDate = new Date()
     maxFutureDate.setDate(maxFutureDate.getDate() + 30)

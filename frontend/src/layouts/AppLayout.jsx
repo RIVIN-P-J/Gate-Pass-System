@@ -84,11 +84,11 @@ export default function AppLayout() {
                 <div className="text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Gatepass</div>
                 <div className="text-xl font-semibold">Dashboard</div>
               </motion.div>
-              <div className="flex gap-2">
-                <button className="btn-ghost px-3" onClick={() => setCollapsed((v) => !v)} title="Toggle sidebar">
+              <div className={cn("flex gap-2", collapsed && "flex-col w-full")}>
+                <button className={cn("btn-ghost px-3", collapsed && "w-full")} onClick={() => setCollapsed((v) => !v)} title="Toggle sidebar">
                   {collapsed ? '»' : '«'}
                 </button>
-                <button className="btn-ghost px-3" onClick={toggle} title="Toggle theme">
+                <button className={cn("btn-ghost px-3", collapsed && "w-full")} onClick={toggle} title="Toggle theme">
                   {theme === 'dark' ? '☾' : '☀'}
                 </button>
               </div>
@@ -114,7 +114,7 @@ export default function AppLayout() {
               ))}
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className={cn("mt-4 flex gap-2", collapsed && "flex-col")}>
               <button
                 className="btn-primary w-full"
                 onClick={() => {
@@ -129,7 +129,7 @@ export default function AppLayout() {
                 </motion.span>
               </button>
               <button
-                className="btn-ghost"
+                className={cn("btn-ghost", collapsed && "w-full")}
                 onClick={() => {
                   logout()
                   nav('/login')

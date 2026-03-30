@@ -4,7 +4,8 @@ const QRCode = require('qrcode')
 const jwt = require('jsonwebtoken')
 const { query } = require('../db/pool')
 const { requireAuth, requireRole } = require('../middleware/auth')
-const { checkMonthlyLimit } = require('./notifications')
+const notificationService = require('../services/notificationService')
+const { checkMonthlyLimit, createNotification } = require('./notifications')
 
 const router = express.Router()
 
@@ -13,66 +14,128 @@ async function getStudentIdForUser(userId) {
   return rows[0]?.id
 }
 
+async function logEmergencyAudit(gatepassId, studentId, eventType, details = null) {
+  try {
+    await query(
+      `INSERT INTO EmergencyRequestAudits
+       (gatepass_id, student_id, event_type, details)
+       VALUES (?, ?, ?, ?)`,
+      [gatepassId, studentId, eventType, details]
+    )
+  } catch (error) {
+    console.error('Error logging emergency audit:', error)
+  }
+}
+
 router.post('/', requireAuth, requireRole('student'), async (req, res) => {
   const schema = z.object({
+    gatepass_type: z.enum(['standard', 'emergency']).optional().default('standard'),
     reason: z.string().min(3),
-    out_time: z.string().min(1),
-    in_time: z.string().min(1),
+    out_time: z.string().optional(),
+    in_time: z.string().optional(),
+    emergency_category: z.enum(['medical', 'family', 'other']).optional(),
+    duration_minutes: z.coerce.number().int().min(15).max(720).optional(),
   })
   const body = schema.safeParse(req.body)
-  if (!body.success) return res.status(400).json({ message: 'Invalid payload' })
+  if (!body.success) return res.status(400).json({ message: 'Invalid payload', errors: body.error.flatten() })
 
   const studentId = await getStudentIdForUser(req.user.id)
   if (!studentId) return res.status(400).json({ message: 'Student profile missing' })
 
-  const { reason, out_time, in_time } = body.data
-  
-  // Parse dates
-  const outDateTime = new Date(out_time)
-  const inDateTime = new Date(in_time)
+  const { gatepass_type, reason, out_time, in_time, emergency_category, duration_minutes } = body.data
   const now = new Date()
-  
-  // Validation Logic
-  const errors = []
-  
-  // 1. OUT time cannot be in the past
-  if (outDateTime < now) {
-    errors.push('OUT time cannot be in the past')
-  }
-  
-  // 2. IN time must be greater than OUT time
-  if (inDateTime <= outDateTime) {
-    errors.push('IN time must be later than OUT time')
-  }
-  
-  // 3. Both times should be reasonable (not too far in future)
-  const maxFutureDays = 30 // Maximum 30 days in future
-  const maxFutureDate = new Date()
-  maxFutureDate.setDate(maxFutureDate.getDate() + maxFutureDays)
-  
-  if (outDateTime > maxFutureDate) {
-    errors.push(`OUT time cannot be more than ${maxFutureDays} days in the future`)
-  }
-  
-  // Return validation errors if any
-  if (errors.length > 0) {
-    return res.status(400).json({ 
-      message: 'Validation failed', 
-      errors 
-    })
+  let outDateTime
+  let inDateTime
+  let priority = 'standard'
+  let autoApproved = false
+  let status = 'pending'
+  let expectedDuration = null
+
+  if (gatepass_type === 'emergency') {
+    if (!emergency_category) {
+      return res.status(400).json({ message: 'Emergency category is required' })
+    }
+    if (!duration_minutes) {
+      return res.status(400).json({ message: 'Expected duration is required' })
+    }
+
+    const recentEmergency = await query(
+      `SELECT COUNT(*) as count
+       FROM GatepassRequests
+       WHERE student_id = ? AND gatepass_type = 'emergency'
+         AND created_at >= (NOW() - INTERVAL 7 DAY)`,
+      [studentId]
+    )
+
+    if (Number(recentEmergency[0]?.count || 0) >= 3) {
+      return res.status(429).json({ message: 'Emergency gatepass limit exceeded. Only 3 emergency requests are allowed per week.' })
+    }
+
+    outDateTime = now
+    inDateTime = new Date(now.getTime() + duration_minutes * 60000)
+    expectedDuration = duration_minutes
+    priority = 'high'
+    autoApproved = emergency_category === 'medical' || emergency_category === 'family'
+    status = autoApproved ? 'approved' : 'pending'
+  } else {
+    if (!out_time || !in_time) {
+      return res.status(400).json({ message: 'OUT and IN times are required for standard requests' })
+    }
+    outDateTime = new Date(out_time)
+    inDateTime = new Date(in_time)
+
+    const errors = []
+    if (outDateTime < now) {
+      errors.push('OUT time cannot be in the past')
+    }
+    if (inDateTime <= outDateTime) {
+      errors.push('IN time must be later than OUT time')
+    }
+
+    const maxFutureDays = 30
+    const maxFutureDate = new Date()
+    maxFutureDate.setDate(maxFutureDate.getDate() + maxFutureDays)
+    if (outDateTime > maxFutureDate) {
+      errors.push(`OUT time cannot be more than ${maxFutureDays} days in the future`)
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ message: 'Validation failed', errors })
+    }
   }
 
   const result = await query(
-    'INSERT INTO GatepassRequests (student_id, reason, out_time, in_time, status) VALUES (?, ?, ?, ?, ?)',
-    [studentId, reason, new Date(out_time), new Date(in_time), 'pending'],
+    `INSERT INTO GatepassRequests
+     (student_id, reason, gatepass_type, emergency_category, expected_duration_minutes,
+      priority, auto_approved, out_time, in_time, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [studentId, reason, gatepass_type, emergency_category || null, expectedDuration,
+      priority, autoApproved ? 1 : 0, outDateTime, inDateTime, status]
   )
-  
+
+  const gatepassId = result.insertId
+
+  if (gatepass_type === 'emergency') {
+    await logEmergencyAudit(gatepassId, studentId, 'created', `category=${emergency_category}, duration=${duration_minutes}min`)
+
+    const notificationMessage = `Emergency gatepass requested: ${emergency_category.toUpperCase()} (${reason}). ${autoApproved ? 'Auto-approved' : 'Pending admin review.'}`
+    createNotification(studentId, gatepassId, 'emergency_request', notificationMessage)
+      .catch(err => console.error('Error notifying admins about emergency request:', err))
+
+    notificationService.sendParentNotification(studentId, 'emergency', now)
+      .catch(err => console.error('Error sending emergency parent notification:', err))
+
+    if (autoApproved) {
+      await logEmergencyAudit(gatepassId, studentId, 'auto_approved', `Auto-approved for ${emergency_category}`)
+    }
+  }
+
   // Check monthly limit (async, don't wait for response)
-  checkMonthlyLimit(studentId, result.insertId).catch(err => 
+  checkMonthlyLimit(studentId, gatepassId).catch(err => 
     console.error('Error checking monthly limit:', err)
   )
-  
-  return res.json({ id: result.insertId })
+
+  return res.json({ id: gatepassId, status })
 })
 
 router.get('/mine', requireAuth, requireRole('student'), async (req, res) => {

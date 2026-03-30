@@ -17,6 +17,11 @@ export default function Signup() {
     register_number: '',
     department: '',
     year: '1',
+    parent_name: '',
+    parent_relationship: '',
+    parent_phone: '',
+    parent_email: '',
+    parent_preferred_method: 'sms',
   })
   const [busy, setBusy] = useState(false)
 
@@ -25,7 +30,7 @@ export default function Signup() {
     setBusy(true)
     try {
       const { data } = await api.post('/auth/signup', form)
-      localStorage.setItem('gp_token', data.token)
+      localStorage.setItem('token', data.token)
       await refreshMe()
       toast.success('Account created!')
       nav('/app', { replace: true })
@@ -82,36 +87,99 @@ export default function Signup() {
         </div>
 
         {form.role === 'student' && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Register No.</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input
+                    className="input"
+                    value={form.register_number}
+                    onChange={(e) => setForm({ ...form, register_number: e.target.value })}
+                  />
+                </MotionDiv>
+              </div>
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Department</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+                </MotionDiv>
+              </div>
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Year</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <select className="input" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}>
+                    {['1', '2', '3', '4'].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </MotionDiv>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Parent Name</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input
+                    className="input"
+                    value={form.parent_name}
+                    onChange={(e) => setForm({ ...form, parent_name: e.target.value })}
+                  />
+                </MotionDiv>
+              </div>
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Relationship</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input
+                    className="input"
+                    value={form.parent_relationship}
+                    onChange={(e) => setForm({ ...form, parent_relationship: e.target.value })}
+                  />
+                </MotionDiv>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Parent Phone</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input
+                    className="input"
+                    value={form.parent_phone}
+                    onChange={(e) => setForm({ ...form, parent_phone: e.target.value })}
+                  />
+                </MotionDiv>
+              </div>
+              <div>
+                <div className="text-sm text-zinc-300 mb-2">Parent Email</div>
+                <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
+                  <input
+                    className="input"
+                    value={form.parent_email}
+                    onChange={(e) => setForm({ ...form, parent_email: e.target.value })}
+                  />
+                </MotionDiv>
+              </div>
+            </div>
+
             <div>
-              <div className="text-sm text-zinc-300 mb-2">Register No.</div>
+              <div className="text-sm text-zinc-300 mb-2">Preferred notification method</div>
               <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
-                <input
+                <select
                   className="input"
-                  value={form.register_number}
-                  onChange={(e) => setForm({ ...form, register_number: e.target.value })}
-                />
-              </MotionDiv>
-            </div>
-            <div>
-              <div className="text-sm text-zinc-300 mb-2">Department</div>
-              <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
-                <input className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-              </MotionDiv>
-            </div>
-            <div>
-              <div className="text-sm text-zinc-300 mb-2">Year</div>
-              <MotionDiv whileHover={{ y: -1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
-                <select className="input" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}>
-                  {['1', '2', '3', '4'].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
+                  value={form.parent_preferred_method}
+                  onChange={(e) => setForm({ ...form, parent_preferred_method: e.target.value })}
+                >
+                  <option value="sms">SMS</option>
+                  <option value="email">Email</option>
+                  <option value="both">Both</option>
                 </select>
               </MotionDiv>
             </div>
-          </div>
+          </>
         )}
 
         <MotionButton whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} className="btn-primary py-3" disabled={busy}>

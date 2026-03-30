@@ -21,7 +21,7 @@ function Modal({ open, onClose, children }) {
         <motion.div className="fixed inset-0 z-50 grid place-items-center px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.button className="absolute inset-0 bg-black/60" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
           <motion.div
-            className="relative w-full max-w-xl rounded-3xl bg-zinc-950 border border-white/10 shadow-soft p-6"
+            className="relative w-full max-w-xl rounded-3xl glass shadow-soft p-6"
             initial={{ opacity: 0, y: 14, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.98 }}
@@ -113,7 +113,7 @@ export default function Requests() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-3xl border border-white/10">
+      <div className="mt-6 overflow-hidden rounded-3xl glass">
         <div className="grid grid-cols-[140px_1fr_180px_160px] gap-0 bg-white/5 px-4 py-3 text-xs uppercase tracking-wider text-zinc-300">
           <div>ID</div>
           <div>Student</div>
@@ -121,14 +121,14 @@ export default function Requests() {
           <div className="text-right">Action</div>
         </div>
         {busy ? (
-          <div className="p-6 text-zinc-300 bg-zinc-950">Loading…</div>
+          <div className="p-6 text-zinc-300">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="p-6 text-zinc-300 bg-zinc-950">No matching requests.</div>
+          <div className="p-6 text-zinc-300">No matching requests.</div>
         ) : (
           filtered.map((x) => (
             <motion.div
               key={x.id}
-              className="grid grid-cols-[140px_1fr_180px_160px] items-center bg-zinc-950 px-4 py-4 border-t border-white/10"
+              className="grid grid-cols-[140px_1fr_180px_160px] items-center px-4 py-4 border-t border-white/10"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
@@ -140,7 +140,12 @@ export default function Requests() {
                 <div className="text-xs text-zinc-400 mt-1">
                   {x.student?.register_number} • {x.student?.department} • Year {x.student?.year}
                 </div>
-                <div className="text-xs text-zinc-400 mt-1 line-clamp-1">{x.reason}</div>
+                {x.gatepass_type === 'emergency' && (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-rose-200">
+                    Emergency {x.emergency_category?.toUpperCase()}
+                  </div>
+                )}
+                <div className="text-xs text-zinc-400 mt-2 line-clamp-1">{x.reason}</div>
               </div>
               <div>
                 <StatusPill status={x.status} />
@@ -172,6 +177,12 @@ export default function Requests() {
             <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
               <div className="text-sm text-zinc-300">Reason</div>
               <div className="mt-2 text-zinc-100">{selected.reason}</div>
+              {selected.gatepass_type === 'emergency' && (
+                <div className="mt-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 p-3 text-sm text-rose-100">
+                  <div className="font-medium">Emergency Category:</div>
+                  <div>{selected.emergency_category?.toUpperCase()}</div>
+                </div>
+              )}
               <div className="mt-4 text-xs text-zinc-400">
                 Out: {new Date(selected.out_time).toLocaleString()} • In: {new Date(selected.in_time).toLocaleString()}
               </div>

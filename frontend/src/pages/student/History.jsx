@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { api } from '../../lib/api'
+import { formatDateTime } from '../../lib/date'
 
 const StatusPill = ({ status }) => {
   const cls =
@@ -95,7 +96,7 @@ export default function History() {
                   <div className="text-zinc-200 font-semibold">Request #{x.id}</div>
                   <div className="mt-1 text-zinc-400 text-sm">{x.reason}</div>
                   <div className="mt-3 text-xs text-zinc-400">
-                    Out: {new Date(x.out_time).toLocaleString()} • In: {new Date(x.in_time).toLocaleString()}
+                    Out: {formatDateTime(x.out_time)} • In: {formatDateTime(x.in_time)}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -141,7 +142,7 @@ export default function History() {
             />
 
             <motion.div
-              className="relative w-full max-w-2xl rounded-3xl bg-zinc-950 border border-white/10 shadow-soft p-6 overflow-hidden"
+              className="relative w-full max-w-2xl rounded-3xl glass shadow-soft p-6 overflow-hidden"
               initial={{ opacity: 0, y: 18, scale: 0.98, filter: 'blur(6px)' }}
               animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, y: 18, scale: 0.98, filter: 'blur(6px)' }}
@@ -156,7 +157,7 @@ export default function History() {
                   <div className="mt-2 text-2xl font-semibold text-white">Request #{selected.id}</div>
                   <div className="mt-2 text-sm text-zinc-300 max-w-xl">{selected.reason}</div>
                   <div className="mt-3 text-xs text-zinc-400">
-                    Out: {new Date(selected.out_time).toLocaleString()} • In: {new Date(selected.in_time).toLocaleString()}
+                    Out: {formatDateTime(selected.out_time)} • In: {formatDateTime(selected.in_time)}
                   </div>
                 </div>
 

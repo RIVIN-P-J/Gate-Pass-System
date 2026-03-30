@@ -51,18 +51,16 @@ router.get('/student/:gatepassId', requireAuth, requireRole('student'), async (r
       return res.status(400).json({ message: 'Student has already entered' })
     }
 
-    // Generate QR code payload with entry-specific data
+    // Generate QR code payload for the original gatepass, usable for both exit and entry
     const payload = {
-      type: 'entry',
+      type: 'gatepass',
       gatepassId: gatepassId,
       studentId: studentId,
-      purpose: 'entry',
-      exitTime: exitLog[0].exit_time,
       generatedAt: new Date().toISOString()
     }
 
     // Sign the payload
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' })
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2d' })
 
     return res.json({
       qrToken: token,

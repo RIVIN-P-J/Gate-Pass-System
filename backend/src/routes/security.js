@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken')
 const { z } = require('zod')
 const { query } = require('../db/pool')
 const { requireAuth, requireRole } = require('../middleware/auth')
-const { checkLateReturn } = require('./notifications')
 const { updateStudentStatus } = require('./studentStatus')
+const { checkLateReturn } = require('./studentStatus')
+const notificationService = require('../services/notificationService')
 
 const router = express.Router()
 
@@ -23,7 +24,7 @@ router.post('/verify', requireAuth, requireRole('security'), async (req, res) =>
   if (decoded?.type !== 'gatepass' || !decoded?.gatepassId) return res.status(400).json({ message: 'Invalid QR payload' })
 
   const gpRows = await query(
-    `SELECT g.id, g.reason, g.out_time, g.in_time, g.status,
+    `SELECT g.id, g.reason, g.out_time, g.in_time, g.status, g.student_id,
             s.register_number, s.department, s.year
      FROM GatepassRequests g
      JOIN Students s ON s.id = g.student_id
@@ -34,9 +35,55 @@ router.post('/verify', requireAuth, requireRole('security'), async (req, res) =>
   if (!gp) return res.status(404).json({ message: 'Gatepass not found' })
   if (gp.status !== 'approved') return res.status(400).json({ message: 'Gatepass not approved' })
 
+  const actionTime = new Date()
+  const logRows = await query(
+    'SELECT id, exit_time, entry_time FROM Logs WHERE gatepass_id = ? ORDER BY id DESC LIMIT 1',
+    [decoded.gatepassId]
+  )
+
+  let action = null
+  let exitTime = null
+  let entryTime = null
+
+  if (!logRows.length || !logRows[0].exit_time) {
+    action = 'exit'
+    if (!logRows.length) {
+      await query('INSERT INTO Logs (gatepass_id, exit_time) VALUES (?, ?)', [decoded.gatepassId, actionTime])
+    } else {
+      await query('UPDATE Logs SET exit_time = ? WHERE gatepass_id = ?', [actionTime, decoded.gatepassId])
+    }
+    exitTime = actionTime
+    entryTime = logRows[0]?.entry_time || null
+  } else if (logRows[0].exit_time && !logRows[0].entry_time) {
+    action = 'entry'
+    await query('UPDATE Logs SET entry_time = ? WHERE gatepass_id = ?', [actionTime, decoded.gatepassId])
+    exitTime = logRows[0].exit_time
+    entryTime = actionTime
+  } else {
+    return res.status(400).json({
+      message: 'This gatepass cycle is already completed. Student has both exited and entered.',
+      code: 'CYCLE_COMPLETED'
+    })
+  }
+
+  const studentId = gp.student_id
+  if (studentId) {
+    if (action === 'exit') {
+      await updateStudentStatus(studentId, 'OUTSIDE', decoded.gatepassId)
+    } else {
+      await updateStudentStatus(studentId, 'INSIDE', null)
+    }
+    notificationService.sendParentNotification(studentId, action, actionTime)
+      .catch(err => console.error('Error sending parent notification:', err))
+  }
+
   return res.json({
+    action,
+    action_time: actionTime,
     gatepass: { id: gp.id, reason: gp.reason, out_time: gp.out_time, in_time: gp.in_time, status: gp.status },
     student: { register_number: gp.register_number, department: gp.department, year: gp.year },
+    exit_time: exitTime,
+    entry_time: entryTime,
   })
 })
 
@@ -44,7 +91,7 @@ router.post('/gatepasses/:id/exit', requireAuth, requireRole('security'), async 
   const id = Number(req.params.id)
 
   // Check if gatepass exists and is approved
-  const gatepass = await query('SELECT id, status FROM GatepassRequests WHERE id = ?', [id])
+  const gatepass = await query('SELECT id, status, student_id FROM GatepassRequests WHERE id = ?', [id])
   if (!gatepass.length) {
     return res.status(404).json({ message: 'Gatepass not found' })
   }
@@ -70,17 +117,23 @@ router.post('/gatepasses/:id/exit', requireAuth, requireRole('security'), async 
     })
   }
 
-  // Create exit record
+  const actionTime = new Date()
+
+  // Create or update exit record with a consistent timestamp
   if (!existing.length) {
-    await query('INSERT INTO Logs (gatepass_id, exit_time) VALUES (?, NOW())', [id])
+    await query('INSERT INTO Logs (gatepass_id, exit_time) VALUES (?, ?)', [id, actionTime])
   } else {
-    await query('UPDATE Logs SET exit_time = NOW() WHERE gatepass_id = ?', [id])
+    await query('UPDATE Logs SET exit_time = ? WHERE gatepass_id = ?', [actionTime, id])
   }
 
   // Update student status to OUTSIDE when they exit
   const studentId = gatepass[0].student_id || (await query('SELECT student_id FROM GatepassRequests WHERE id = ?', [id]))[0]?.student_id
   if (studentId) {
     await updateStudentStatus(studentId, 'OUTSIDE', id)
+    
+    // Send parent notification for student exit (async, don't wait for response)
+    notificationService.sendParentNotification(studentId, 'exit', actionTime)
+      .catch(err => console.error('Error sending parent notification for exit:', err))
   }
 
   const gp = await query('SELECT id, reason, out_time, in_time, status FROM GatepassRequests WHERE id = ?', [id])
@@ -91,7 +144,7 @@ router.post('/gatepasses/:id/entry', requireAuth, requireRole('security'), async
   const id = Number(req.params.id)
 
   // Check if gatepass exists and is approved
-  const gatepass = await query('SELECT id, status FROM GatepassRequests WHERE id = ?', [id])
+  const gatepass = await query('SELECT id, status, student_id FROM GatepassRequests WHERE id = ?', [id])
   if (!gatepass.length) {
     return res.status(404).json({ message: 'Gatepass not found' })
   }
@@ -124,8 +177,10 @@ router.post('/gatepasses/:id/entry', requireAuth, requireRole('security'), async
     })
   }
 
-  // Update the entry time
-  await query('UPDATE Logs SET entry_time = NOW() WHERE gatepass_id = ?', [id])
+  const actionTime = new Date()
+
+  // Update the entry time with a consistent timestamp
+  await query('UPDATE Logs SET entry_time = ? WHERE gatepass_id = ?', [actionTime, id])
   const logId = existing[0].id
 
   // Check for late return and send notification
@@ -136,7 +191,7 @@ router.post('/gatepasses/:id/entry', requireAuth, requireRole('security'), async
 
   if (gatepassDetails.length > 0) {
     const approvedInTime = new Date(gatepassDetails[0].in_time)
-    const actualEntryTime = new Date()
+    const actualEntryTime = actionTime
     
     // Check if entry is late (more than 5 minutes after approved time)
     const lateThresholdMinutes = 5
@@ -172,6 +227,10 @@ router.post('/gatepasses/:id/entry', requireAuth, requireRole('security'), async
   const studentId = gatepass[0].student_id || (await query('SELECT student_id FROM GatepassRequests WHERE id = ?', [id]))[0]?.student_id
   if (studentId) {
     await updateStudentStatus(studentId, 'INSIDE', null)
+    
+    // Send parent notification for student entry (async, don't wait for response)
+    notificationService.sendParentNotification(studentId, 'entry', actionTime)
+      .catch(err => console.error('Error sending parent notification for entry:', err))
   }
 
   const gp = await query('SELECT id, reason, out_time, in_time, status FROM GatepassRequests WHERE id = ?', [id])

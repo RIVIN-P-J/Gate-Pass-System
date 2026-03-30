@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
+import { formatDateTime } from '../lib/date'
 import { QrCode, Clock, AlertTriangle, CheckCircle } from 'lucide-react'
 
 const StudentQRCode = ({ gatepassId }) => {
@@ -34,7 +35,7 @@ const StudentQRCode = ({ gatepassId }) => {
 
   const formatTime = (timeString) => {
     if (!timeString) return 'Not set'
-    return new Date(timeString).toLocaleString()
+    return formatDateTime(timeString)
   }
 
   if (!gatepassId) {
@@ -57,10 +58,10 @@ const StudentQRCode = ({ gatepassId }) => {
             disabled={loading}
             className="px-6 py-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Generating...' : 'Generate Entry QR Code'}
+            {loading ? 'Generating...' : 'Generate Gatepass QR Code'}
           </button>
           <p className="mt-2 text-xs text-zinc-500">
-            Generate QR code for campus entry after you have exited
+            Generate the same gatepass QR used for both exit and entry.
           </p>
         </div>
       )}
@@ -84,8 +85,8 @@ const StudentQRCode = ({ gatepassId }) => {
           {/* QR Code Display */}
           <div className="rounded-3xl bg-white p-8 border-2 border-white/20">
             <div className="text-center mb-4">
-              <div className="text-sm text-zinc-600 mb-2">Entry QR Code</div>
-              <div className="text-xs text-zinc-500">Show this to security for campus entry</div>
+              <div className="text-sm text-zinc-600 mb-2">Gatepass QR Code</div>
+              <div className="text-xs text-zinc-500">Show this to security for campus exit or entry</div>
             </div>
             
             {/* QR Code Placeholder - In a real app, you'd use a QR code library */}
@@ -129,9 +130,9 @@ const StudentQRCode = ({ gatepassId }) => {
             </div>
             <ul className="text-emerald-200 text-sm space-y-1">
               <li>• Show this QR code to security personnel</li>
-              <li>• Security will scan it for campus entry</li>
-              <li>• Entry time will be automatically recorded</li>
-              <li>• Late entries will notify administrators</li>
+              <li>• Security will scan it for campus exit and entry</li>
+              <li>• The same QR can be reused twice: once to exit, once to enter</li>
+              <li>• Time is recorded only after verification</li>
             </ul>
           </div>
 

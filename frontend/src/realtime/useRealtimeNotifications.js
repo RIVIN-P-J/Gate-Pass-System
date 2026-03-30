@@ -10,7 +10,7 @@ export function useRealtimeNotifications() {
   const { user } = useAuth()
 
   useEffect(() => {
-    const token = localStorage.getItem('gp_token')
+    const token = localStorage.getItem('token')
     if (!user || !token) return
 
     socket = io(ENV.API_BASE_URL, {

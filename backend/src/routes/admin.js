@@ -8,6 +8,7 @@ const router = express.Router()
 router.get('/gatepasses', requireAuth, requireRole('admin'), async (req, res) => {
   const items = await query(
     `SELECT g.id, g.reason, g.out_time, g.in_time, g.status, g.created_at,
+            g.gatepass_type, g.emergency_category, g.priority, g.auto_approved,
             u.id as user_id, u.name as user_name, u.email as user_email,
             s.id as student_id, s.register_number, s.department, s.year
      FROM GatepassRequests g
@@ -20,6 +21,10 @@ router.get('/gatepasses', requireAuth, requireRole('admin'), async (req, res) =>
   const shaped = items.map((x) => ({
     id: x.id,
     reason: x.reason,
+    gatepass_type: x.gatepass_type,
+    emergency_category: x.emergency_category,
+    priority: x.priority,
+    auto_approved: Boolean(x.auto_approved),
     out_time: x.out_time,
     in_time: x.in_time,
     status: x.status,
@@ -148,12 +153,23 @@ router.get('/stats', requireAuth, requireRole('admin'), async (req, res) => {
     )
     const completed = completedResult[0].count
 
+    const emergencyPendingResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests WHERE gatepass_type = ? AND status = ?',
+      ['emergency', 'pending']
+    )
+    const emergencyApprovedResult = await query(
+      'SELECT COUNT(*) as count FROM GatepassRequests WHERE gatepass_type = ? AND status = ?',
+      ['emergency', 'approved']
+    )
+
     return res.json({
       pending,
       approvedToday,
       total,
       rejected,
       completed,
+      emergencyPending: Number(emergencyPendingResult[0]?.count || 0),
+      emergencyApproved: Number(emergencyApprovedResult[0]?.count || 0),
       // Additional useful stats
       todayTotal: pending + approvedToday,
       approvalRate: total > 0 ? Math.round((completed / total) * 100) : 0
